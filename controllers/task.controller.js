@@ -93,9 +93,38 @@ async function createTask(req, res) {
   }
 }
 
+async function updateTask(req, res) {
+  const userId = req.userId; // Assuming userId is obtained from authentication middleware
+  const { id } = req.params;
+  const taskToUpdate = req.body;
+
+  try {
+    // Find the task by ID and user ID
+    const updatedTask = await Task.findOneAndUpdate(
+      { _id: id, user: userId },
+      { $set: taskToUpdate },
+      { new: true }
+    );
+
+    if (!updatedTask) {
+      console.log(`task.controller, updateTask. Task not found with id: ${id}`);
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    res.json(updatedTask);
+  } catch (err) {
+    console.log(
+      `task.controller, updateTask. Error while updating task with id: ${id}`,
+      err
+    );
+    res.status(500).json({ message: "Server error while updating task" });
+  }
+}
+
 module.exports = {
   getUserTasks,
   getTaskById,
   createTask,
   deleteTask,
+  updateTask,
 };
