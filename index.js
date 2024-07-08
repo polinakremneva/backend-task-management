@@ -3,6 +3,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const cors = require("cors");
 const dotenv = require("dotenv");
+const path = require("path");
 
 const connectDB = require("./config/db");
 const { verifyToken } = require("./middleware/auth.middleware");
@@ -30,6 +31,10 @@ async function main() {
   app.use("/api/task", verifyToken, taskRoutes);
   app.use("/api/user", userRoutes);
   app.use("/api/auth", authRoutes);
+
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "index.html"));
+  });
 
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
