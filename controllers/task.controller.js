@@ -75,6 +75,13 @@ async function deleteTask(req, res) {
 async function createTask(req, res) {
   const taskToAdd = req.body;
   taskToAdd.user = req.userId;
+  console.log(taskToAdd);
+  taskToAdd.todoList = taskToAdd.todoList.split(",").map((item) => {
+    return {
+      title: item.trim(),
+      isComplete: false,
+    };
+  });
   const newTask = new Task(taskToAdd);
 
   try {
