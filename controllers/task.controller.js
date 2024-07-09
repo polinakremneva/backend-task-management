@@ -49,52 +49,80 @@ async function getTaskById(req, res) {
 
 // Delete an product
 async function deleteTask(req, res) {
-  const userId = req.userId; // Assuming userId is obtained from authentication middleware
   const { id } = req.params;
 
   try {
-    // Find the task by ID and user ID
-    const task = await Task.findOneAndDelete({ _id: id, user: userId });
+    // Найти задачу по ID и удалить её
+    const task = await Task.findOneAndDelete({ _id: id });
 
     if (!task) {
-      console.log(`task.controller, deleteTask. Task not found with id: ${id}`);
-      return res.status(404).json({ message: "Task not found" });
+      console.log(`Задача с ID ${id} не найдена`);
+      return res.status(404).json({ message: "Задача не найдена" });
     }
 
-    res.json({ message: "Task deleted" });
-  } catch (err) {
-    console.log(
-      `task.controller, deleteTask. Error while deleting task with id: ${id}`,
-      err
+    console.log(`Задача удалена: ${task}`);
+
+    // Обновить массив задач пользователя, чтобы удалить удаленную задачу
+    const updatedUser = await User.findByIdAndUpdate(
+      task.user, // ID пользователя, связанного с задачей
+      { $pull: { tasks: task._id } }, // Удалить ID задачи из массива tasks
+      { new: true } // Вернуть обновленный документ пользователя
     );
-    res.status(500).json({ message: "Server error while deleting task" });
+
+    if (!updatedUser) {
+      console.log(`Пользователь с ID ${task.user} не найден`);
+      // Можно обработать этот случай по-другому в зависимости от логики вашего приложения
+    }
+
+    console.log(`Задачи пользователя обновлены: ${updatedUser}`);
+
+    return res.status(204).json({ message: "Задача удалена" });
+  } catch (err) {
+    console.error(`Ошибка при удалении задачи с ID ${id}`, err);
+    return res
+      .status(500)
+      .json({ message: "Ошибка сервера при удалении задачи" });
   }
 }
+
+module.exports = {
+  deleteTask,
+};
 
 // Create a new product
 async function createTask(req, res) {
   const taskToAdd = req.body;
   taskToAdd.user = req.userId;
-  console.log(taskToAdd);
-  taskToAdd.todoList = taskToAdd.todoList.split(",").map((item) => {
-    return {
-      title: item.trim(),
-      isComplete: false,
-    };
-  });
+
+  // Преобразуем todoList из строки в массив объектов
+  taskToAdd.todoList = taskToAdd.todoList.split(",").map((item) => ({
+    title: item.trim(),
+    isComplete: false,
+  }));
+
   const newTask = new Task(taskToAdd);
 
   try {
     const savedTask = await newTask.save();
-    res.status(201).json(savedTask);
+
+    const user = await User.findOneAndUpdate(
+      { _id: req.userId },
+      { $push: { tasks: savedTask._id } },
+      { new: true }
+    );
+
+    if (!user) {
+      console.log(`User not found with ID: ${req.userId}`);
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(201).json(savedTask, "success");
   } catch (err) {
     if (err.name === "ValidationError") {
-      // Mongoose validation error
-      console.log(`task.controller, createTask. ${err.message}`);
+      console.log(`Validation error: ${err.message}`);
       res.status(400).json({ message: err.message });
     } else {
-      // Other types of errors
-      console.log(`task.controller, createTask. ${err.message}`);
+      console.log(`Server error while creating task: ${err.message}`);
       res.status(500).json({ message: "Server error while creating task" });
     }
   }
