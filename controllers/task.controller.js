@@ -1,5 +1,6 @@
 const User = require("../models/user.model");
 const Task = require("../models/task.model");
+const { log } = require("console");
 // const { buildCriteria } = require("../helpers/product.helper");
 
 // Get all products
@@ -85,39 +86,38 @@ async function deleteTask(req, res) {
   }
 }
 
-module.exports = {
-  deleteTask,
-};
-
 // Create a new product
 async function createTask(req, res) {
   const taskToAdd = req.body;
   taskToAdd.user = req.userId;
 
-  // Преобразуем todoList из строки в массив объектов
   taskToAdd.todoList = taskToAdd.todoList.split(",").map((item) => ({
     title: item.trim(),
     isComplete: false,
   }));
 
-  const newTask = new Task(taskToAdd);
+  // console.log(taskToAdd);
 
+  const newTask = new Task(taskToAdd);
+  // console.log("before");
   try {
     const savedTask = await newTask.save();
-
+    // console.log("after");
     const user = await User.findOneAndUpdate(
       { _id: req.userId },
       { $push: { tasks: savedTask._id } },
       { new: true }
     );
-
+    console.log("Task", savedTask._id);
+    console.log("user", user);
     if (!user) {
       console.log(`User not found with ID: ${req.userId}`);
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.status(201).json(savedTask, "success");
+    res.status(201).json(savedTask);
   } catch (err) {
+    console.log(err);
     if (err.name === "ValidationError") {
       console.log(`Validation error: ${err.message}`);
       res.status(400).json({ message: err.message });
